@@ -8,6 +8,13 @@ findings and verdicts through three different channels — gather all three, eve
 round. `gh pr view --comments` alone is not sufficient and will show an empty
 result while findings exist.
 
+**Steps 1–2 only read. Step 3 onward mutates.** Several of the phrases that
+invoke this skill are questions — "any new comments on the PR", "did Codex
+review it", "check for bot comments". When the request is a question, gather,
+report what you found, and stop. Go on to fix, verify, push, and comment only
+once the user asks for the findings to be resolved, or has already authorized
+it. A status question must never turn itself into a push.
+
 ## 1. Gather findings from all three sources
 
 Run all three. `--paginate` matters: a busy PR silently truncates otherwise.

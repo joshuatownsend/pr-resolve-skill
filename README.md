@@ -4,10 +4,10 @@ A Claude Code skill that takes a pull request from "the bots have reviewed it" t
 merged — gathering every review finding, fixing them, verifying, and looping
 until the reviewers and the agent actually agree.
 
-It exists because the obvious version of this workflow doesn't work. `gh pr view
---comments` shows neither a bot's 👍 verdict nor the findings Copilot suppresses
-inside a review body, so an agent following the obvious path reports a clean PR
-while five real defects sit unaddressed.
+It exists because the obvious version of this workflow doesn't work.
+`gh pr view --comments` shows neither a bot's 👍 verdict nor the findings Copilot
+suppresses inside a review body, so an agent following the obvious path reports
+a clean PR while five real defects sit unaddressed.
 
 ## Install
 
@@ -44,6 +44,11 @@ Both hot-reload — no session restart needed.
 6. **Wait** for a fresh verdict, and decide whether another round is warranted.
 7. **Summarize** to the PR.
 8. **Merge** on approval.
+
+Steps 1–2 only read. Several trigger phrases are questions — "any new comments
+on the PR", "check for bot comments" — so when you ask one, the skill gathers,
+reports, and stops. It goes on to fix, push, and comment only when you ask it
+to resolve what it found.
 
 ## The parts that aren't obvious
 
