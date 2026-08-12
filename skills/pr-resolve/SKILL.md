@@ -144,13 +144,13 @@ the following, **posted by someone other than you**:
 and explicitly **not** 👀. ISO-8601 UTC timestamps compare correctly as plain
 strings, so `created_at > $PUSH_TIME` is a valid test.
 
-**Your own activity is not a verdict.** Replying to a review thread — which step
-3 tells you to do when you decline a finding — creates a `COMMENTED` review *and*
-an inline comment under your own login, both newer than `PUSH_TIME`. Read
-literally, your reply satisfies the test above, and the loop exits believing a
-reviewer responded when nothing but your own comment happened. Exclude yourself
-by login on every channel, reactions included. Only you are excluded — a human
-reviewer's comment or review is as much a verdict as a bot's.
+**Your own activity is not a verdict.** Replying to a review thread — the normal
+way to decline a finding — creates a `COMMENTED` review *and* an inline comment
+under your own login, both newer than `PUSH_TIME`. Read literally, your own reply
+satisfies the test above, and the loop exits believing a reviewer responded when
+nothing but your own comment happened. Exclude yourself by login on every
+channel, reactions included. Only you are excluded — a human reviewer's comment
+or review is as much a verdict as a bot's.
 
 Re-run step 1 to poll, then apply the exclusion:
 
