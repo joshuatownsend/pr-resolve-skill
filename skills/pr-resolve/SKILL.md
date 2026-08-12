@@ -215,4 +215,10 @@ rests on a signal you could not confirm, ask instead of merging.
 Approval is scoped to one PR. A single session often takes several PRs through
 this skill, and permission granted for one is not permission for the next.
 
-Then squash-merge, using `--admin` if branch protection blocks.
+Then squash-merge: `gh pr merge <n> --squash --delete-branch`.
+
+**Never bypass branch protection or required reviews.** If the merge is blocked,
+that is the protection working — report the specific blocker and stop. Approval
+to merge is not approval to override the checks that approval was conditioned
+on, and `--admin` is exactly the move that turns "merge on green" into a merge
+on red. Use it only if the user, told what is blocking, explicitly asks for it.
