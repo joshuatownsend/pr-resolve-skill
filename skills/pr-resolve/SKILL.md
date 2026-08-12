@@ -31,9 +31,18 @@ gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate \
 
 # c. PR-level reactions (note: issues/, not pulls/ — reactions are issue-scoped)
 gh api repos/{owner}/{repo}/issues/<n>/reactions --paginate \
-  --jq '[.[] | {user: .user.login, content, created_at}]
-        | group_by(.user) | map(max_by(.created_at))'
+  --jq '.[] | {user: .user.login, content, created_at}'
 ```
+
+**Keep every `--jq` filter streaming, one item at a time.** Under `--paginate`,
+`gh` applies `--jq` to each page *separately*, so any filter that aggregates —
+`group_by`, `max_by`, `length`, `add` — silently computes per page and emits one
+result per page. A reactions filter ending `group_by(.user) |
+map(max_by(.created_at))` therefore returns a user once *per page* on a PR with
+more than one page, and the latest-reaction-per-user guarantee fails without any
+error. There is no in-`gh` aggregation to switch to: `gh` refuses `--slurp`
+together with `--jq`, and `--slurp` on its own nests pages rather than flattening
+them. Filter per item, as above, and do the picking yourself.
 
 **Read every review body in full. Never merely count reviews, and never judge
 one by its `state` or `submitted_at`.** That metadata tells you something was
@@ -78,8 +87,8 @@ Codex **swaps** its reaction rather than adding one — the 👍 from the previo
 round disappears when 👀 appears. So never ask "has this bot ever thumbs-upped
 this PR." Ask: **is this bot's latest reaction a 👍, and is it newer than my most
 recent push?** A stale 👍 from an earlier commit is indistinguishable from a
-fresh one except by timestamp. The `group_by | max_by` in step 1c returns only
-the latest reaction per user, which is the one to test.
+fresh one except by timestamp. Step 1c lists every reaction; take the newest
+`created_at` per user and test that one.
 
 ## 3. Fix
 
@@ -164,9 +173,13 @@ gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate \
 gh api repos/{owner}/{repo}/pulls/<n>/comments --paginate \
   --jq ".[] | select(.created_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
         | {user: .user.login, path, line, body}"
+
+gh api repos/{owner}/{repo}/issues/<n>/reactions --paginate \
+  --jq ".[] | select(.created_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
+        | {user: .user.login, content, created_at}"
 ```
 
-Keep `body` in both, for the reason step 1 gives. Where the expected reviewers
+Keep `body` in the review and comment queries, for the reason step 1 gives. Where the expected reviewers
 are all bots, `select(.user.type == "Bot")` is an equivalent filter —
 `.user.type` is `"Bot"` for `copilot-pull-request-reviewer[bot]` and `"User"`
 for humans — but it also drops human reviewers, so prefer the login exclusion

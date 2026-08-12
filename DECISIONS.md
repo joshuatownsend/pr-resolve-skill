@@ -18,13 +18,17 @@ it holds until its stated condition is met.
 
 **Decided:** 2026-08-12 · **Status:** closed
 
-The PR-level reactions pipeline in step 1 of `skills/pr-resolve/SKILL.md` ends:
+The PR-level reactions pipeline in step 1 of `skills/pr-resolve/SKILL.md` ended:
 
 ```
 | group_by(.user) | map(max_by(.created_at))
 ```
 
-**Decision: keep it as written. Do not add `sort_by(.user)`.**
+**Decision: `group_by` needs no `sort_by(.user)`. Do not add one.**
+
+The line itself was removed the same day, for an unrelated defect — see
+*Amendment* below. The decision is recorded against the **claim**, not the line:
+the claim is false wherever it is raised, and it has been raised twice.
 
 ### What was rejected
 
@@ -73,6 +77,48 @@ assert a bug that does not exist: a defensive no-op tells every future reader th
 pipeline is fragile, and invites the next editor to protect it further. The
 skill's reaction handling is load-bearing enough that it should read as
 deliberate.
+
+### Amendment, 2026-08-12 — a real defect in the same line, found the same day
+
+Codex raised a **different** claim against this pipeline, and was explicit that
+the `sort_by` rejection above should stand. It was right, and the line is gone:
+
+> `gh api --help` documents that with `--paginate`, "Each page is a separate JSON
+> array or object" [...] so the embedded jq expression groups and selects a
+> maximum independently on every page.
+
+Verified — `--jq` runs once per page, emitting one result per page:
+
+```console
+$ gh api "repos/OWNER/NAME/commits?per_page=2" --paginate --jq 'length'
+2
+2
+2
+2
+1
+```
+
+So `group_by(.user) | map(max_by(.created_at))` aggregated *per page*, and on a
+PR with more than one page of reactions returned a user once per page — the
+latest-per-user guarantee failing silently. Step 1c is now a streaming
+per-item filter, with the picking left to the agent.
+
+**The suggested fix does not work, and this is the part worth remembering.**
+Codex proposed `--slurp`. `gh` rejects it outright alongside `--jq`:
+
+```console
+$ gh api "repos/OWNER/NAME/commits?per_page=2" --paginate --slurp --jq 'length'
+the `--slurp` option is not supported with `--jq` or `--template`
+```
+
+and `--slurp` on its own returns pages still nested (`[[...],[...]]`), needing
+`add` from a jq that is no longer in the pipeline. Piping to standalone `jq` is
+not portable — it is absent on the maintainer's Windows machine. **Decline any
+future finding that proposes `--slurp` with `--jq`; the incompatibility is
+enforced by `gh`'s argument parser, not a matter of style.**
+
+The lasting rule went into the skill itself: keep every `--jq` filter streaming,
+because under `--paginate` any aggregating filter silently computes per page.
 
 ### What would justify revisiting
 
