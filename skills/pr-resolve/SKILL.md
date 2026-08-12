@@ -17,6 +17,23 @@ it. A status question must never turn itself into a push.
 
 ## 1. Gather findings from all three sources
 
+**First establish two facts about this repository: who reviews here, and which
+channels they actually use.** Both are per-repo, both are cheap to determine from
+the most recently merged PRs, and every later decision rests on them — who to
+block on, who to re-request, and whether a round counts as clean.
+
+**The roster.** Work out who to expect from the reviewers already active on this
+PR, and from the most recently merged PR when this is the first round. **Never
+put yourself in it:** once you have replied in a thread you appear as an active
+reviewer, and step 6 excludes you from verdicts, so a roster containing your own
+login can never be satisfied and the wait never ends.
+
+**The live channels.** Gather all three below every round regardless — but know
+which ones carry signal here. A repo where Codex never runs has no reaction
+traffic at all, and an empty reactions result there means the channel is unused,
+not that a verdict is pending. Waiting on a channel this repo does not use is a
+wait that never ends.
+
 Run all three. `--paginate` matters: a busy PR silently truncates otherwise.
 
 ```bash
@@ -68,15 +85,9 @@ account or billing change only they can make.
 ### Empty is not clean
 
 Nothing found and nobody heard from is not a clean PR — it is a PR no one has
-looked at yet. Before treating any gather as clean, confirm each expected
-reviewer has engaged with the **current** head: an inline comment, a submitted
-review that actually reviewed, or a reaction dated after the head push. Work out
-who to expect from the reviewers already active on this PR, or from the most
-recently merged PR in the repo when this is the first round.
-
-**Never put yourself in that roster.** Once you have replied in a thread you
-appear as an active reviewer, and step 6 excludes you from verdicts — so a roster
-containing your own login can never be satisfied, and the wait never ends.
+looked at yet. Before treating any gather as clean, confirm every reviewer on the
+roster has engaged with the **current** head: an inline comment, a submitted
+review that actually reviewed, or a reaction dated after the head push.
 
 If no reviewer has engaged with the current head, the round is not clean — it has
 not happened yet. Wait and re-poll per step 6 instead of proceeding. Silence is
