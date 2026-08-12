@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-A Claude Code **skill** repository. Its entire content is one skill:
+A Claude Code **skill** repository. Alongside this file and `README.md`, it holds one skill:
 
 - `pr-resolve/SKILL.md` — the `pr-resolve` skill: frontmatter declaring `name`, plus a `description` whose trigger phrases are what drive automatic invocation, followed by a numbered procedure the agent follows.
 

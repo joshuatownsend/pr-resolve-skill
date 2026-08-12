@@ -93,8 +93,17 @@ happen in-session unless diagnosis needs wide reading. When delegating, Sonnet i
 the default and escalation is evidence-driven — a wrong result retries one tier
 up, not again at the same tier.
 
-**A re-review request proves nothing.** `POST .../requested_reviewers` returns
-200 and leaves the list empty for the Copilot bot.
+**Reviewers differ in when they run, so the skill resolves state rather than
+assuming.** Codex re-reviews on every push; Copilot reviews once per request and
+then stops. Waiting for a finished reviewer to "come back" hangs forever, so the
+skill treats *reviewed-but-not-pending* as done and re-requests it explicitly
+when a substantive change landed after its verdict.
+
+**Re-requesting Copilot needs GraphQL.** It is a Bot, not a user, so
+`POST .../requested_reviewers` with `reviewers: ["Copilot"]` returns **201 and
+silently discards the request** — no pending entry, no timeline event, no
+review. The `requestReviews` mutation with `botIds` works, and a real request is
+visible in both `reviewRequests` and the timeline.
 
 ## Where this came from
 

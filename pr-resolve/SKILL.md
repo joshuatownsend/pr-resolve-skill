@@ -130,10 +130,46 @@ Re-run step 1 to poll. If a verdict brings new findings, return to step 3 and
 repeat the loop. If no verdict arrives after a reasonable wait, report the wait
 and ask the user how to proceed — do not treat silence as approval.
 
-**Do not use a re-review request as a completion signal.** `POST
-repos/{owner}/{repo}/pulls/<n>/requested_reviewers` returns 200 and leaves
-`requested_reviewers` empty for the Copilot bot, so a successful response does
-not confirm a review was queued.
+### Where each reviewer stands
+
+Reviewers behave differently: some re-review on every push, others review once
+per request and then stop. Do not model them by name — resolve each one's state
+from the API:
+
+- **Pending** — the reviewer appears in `reviewRequests`, or has a
+  `review_requested` timeline event newer than its latest review. A review is
+  queued; wait. (GitHub clears `reviewRequests` once the review lands, so the
+  timeline is the durable record.)
+- **In progress** — its latest reaction is 👀. Wait.
+- **Fresh verdict** — a comment, review, or 👍 after `PUSH_TIME`. Consume it.
+- **Done, not pending** — reviewed an older head, with no newer request. **It is
+  not coming back on its own.** Never block on this state: a reviewer that acts
+  only on request is finished, not slow. Blocking here hangs forever.
+
+When a **substantive** round pushed changes after a once-per-request reviewer's
+verdict, re-request that reviewer as part of the push — its stale verdict does
+not cover the new code. After a cosmetic-only round, the stale verdict stands.
+
+**Re-triggering Copilot requires GraphQL — the REST call silently does nothing.**
+Copilot is a Bot, not a user, so `POST .../requested_reviewers` with
+`reviewers: ["Copilot"]` returns **201 and discards the request**: no pending
+entry, no timeline event, no review. It looks for a user of that name. Use:
+
+```bash
+gh api graphql -f query='mutation($pr:ID!,$bot:ID!){
+  requestReviews(input:{pullRequestId:$pr, botIds:[$bot], union:true}){
+    pullRequest{ reviewRequests(first:5){nodes{requestedReviewer{... on Bot{login}}}} } } }' \
+  -f pr="<PR node id>" -f bot="<bot id>"
+```
+
+`union: true` keeps existing reviewers. Get the bot id from any earlier
+`ReviewRequestedEvent` in the repo — query `timelineItems(itemTypes:
+[REVIEW_REQUESTED_EVENT])` and read `requestedReviewer` — it is stable across
+PRs. A real request shows up in `reviewRequests` *and* adds a timeline event;
+if neither appears, it did not register. Confirm the outcome by watching for the
+review itself, never by the call succeeding.
+
+Codex re-reviews automatically on every push, and on a `@codex review` comment.
 
 ### How many rounds
 
