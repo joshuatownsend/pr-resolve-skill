@@ -16,7 +16,7 @@ The repo root doubles as the plugin, and `.claude-plugin/marketplace.json` lists
 
 Validate manifests with `claude plugin validate .claude-plugin/marketplace.json --strict`. The plugin manifest emits one warning — that `CLAUDE.md` at the plugin root is not shipped as context — which is expected and correct to ignore: this file is contributor guidance, not something plugin users should receive. Because of it, `--strict` fails on the plugin manifest alone; validate the marketplace manifest strictly instead.
 
-Three files restate the same one-sentence description: the skill's frontmatter, `plugin.json`, and the marketplace entry. Change one, change all three.
+Three files open with the same one-sentence summary — the skill's frontmatter, `plugin.json`, and the marketplace entry — and then diverge: the frontmatter appends the trigger phrases that drive invocation, and the marketplace entry adds a second sentence of detail. Keep that shared opening sentence in sync; do not try to make the whole fields identical.
 
 ## No build, lint, or test tooling
 
