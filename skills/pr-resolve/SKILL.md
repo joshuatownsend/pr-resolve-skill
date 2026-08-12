@@ -93,6 +93,11 @@ If no reviewer has engaged with the current head, the round is not clean — it 
 not happened yet. Wait and re-poll per step 6 instead of proceeding. Silence is
 the one signal that never means approval.
 
+"Not clean" obliges you to *say so*, not to refuse to move. The wait is bounded:
+once a reviewer is not coming — because it cannot run, or is not the kind that
+returns unbidden — report that and let the user decide, per step 8. Never leave
+the user stuck waiting on a bot that will never answer.
+
 ## 2. Reaction semantics
 
 - 👀 (`eyes`) = **currently reading**. Not a result. Keep waiting.
@@ -330,14 +335,30 @@ a converged round per step 6, CI actually green, whichever was named. Verify the
 condition; never infer that it was met. If it is ambiguous, only partly met, or
 rests on a signal you could not confirm, ask instead of merging.
 
-**A reviewer that responded without reviewing does not satisfy any merge
-condition — stop and ask.** A skipped, errored, or quota-exhausted review (step
-1) is a terminal state that ends the wait while carrying no finding, so a round
-containing one can otherwise look converged: nothing substantive was raised,
-because nothing was reviewed. "Clean" in a conditional approval means the
-reviewers looked and found nothing, never that one of them could not run. Report
-which reviewer produced no coverage and what its notice said, and let the user
-decide whether to merge without it.
+**When a reviewer produced no coverage, surface it — but never treat it as a
+veto.** Bot review is best-effort infrastructure, not a guarantee. Exhausted
+Actions minutes, a quota or spend limit, a bot that was never installed on the
+repo, or a plain outage all end the same way: a reviewer that will not report on
+this PR no matter how long you wait. Blocking the merge on that would make the PR
+unmergeable for reasons that have nothing to do with its code, and usually for
+reasons the user cannot fix from here.
+
+The failure to avoid is the *silent* one — describing a round as clean when a
+reviewer never ran, or letting "merge once the bots are clean" resolve itself as
+satisfied when the condition could not be evaluated at all. A round containing a
+skipped review can otherwise look converged: nothing substantive was raised,
+because nothing was reviewed.
+
+So report the gap concretely and let the user choose. Say which reviewers
+reported, which did not, and what the notice gave as the reason. Then offer the
+options that actually exist:
+
+- merge now, accepting the reduced coverage
+- re-request or re-trigger the reviewer and wait one more round
+- wait, when the cause is temporary and the user knows when it clears
+
+Ask; do not assume, and do not block. The user is entitled to merge a PR that one
+of its bots could not look at — they just should not learn that afterwards.
 
 Approval is scoped to one PR. A single session often takes several PRs through
 this skill, and permission granted for one is not permission for the next.

@@ -14,6 +14,52 @@ it holds until its stated condition is met.
 
 ---
 
+## Missing bot review warns the user; it never blocks the merge
+
+**Decided:** 2026-08-12 · **Status:** closed
+
+**Decision: a reviewer that produced no coverage is reported with options. It is
+never a merge veto.** Expect this to be challenged as a safety regression — it
+is not, and the reasoning below is the answer.
+
+### What was rejected
+
+An earlier revision of step 8 said that a reviewer which responded without
+reviewing "does not satisfy any merge condition — stop and ask", voiding any
+conditional approval. That over-corrected a narrower and valid finding: that a
+skipped review must not *silently* count toward convergence.
+
+### Why a hard gate is the wrong shape
+
+Bot review is best-effort infrastructure, not a guarantee. Exhausted Actions
+minutes, a quota or spend limit, an uninstalled bot, or an outage all produce a
+reviewer that will never report on this PR. A gate turns each of those into an
+unmergeable PR, for reasons that have nothing to do with the code and that the
+person merging usually cannot fix. A maintainer who runs out of Actions minutes
+mid-month would be unable to merge anything at all.
+
+The failure actually worth preventing is the silent one — claiming a round was
+clean when a reviewer never ran. Reporting the gap and offering the choice
+prevents that completely, at no cost to anyone's ability to ship.
+
+**Where a real requirement belongs:** if a repository genuinely requires reviewer
+sign-off, that belongs in branch protection, where GitHub enforces it and the
+repo owner has configured it deliberately. The skill already refuses to bypass
+branch protection. Enforcing an *unconfigured* requirement in prose would be the
+skill inventing a policy its user never set.
+
+### What would justify revisiting
+
+- The skill gaining a way to distinguish "this repo requires bot sign-off" from
+  "this repo happens to have bots" — a configured signal, not an inference.
+- Evidence of an agent merging while misreporting coverage, which would mean the
+  reporting requirement is too weak, not that the gate should return.
+
+**Origin:** narrowed after maintainer review, 2026-08-12, following a Codex P1
+that correctly identified the silent-convergence path and a fix that overshot it.
+
+---
+
 ## `null` needs no guard in the step 6 timestamp filters
 
 **Decided:** 2026-08-12 · **Status:** closed
