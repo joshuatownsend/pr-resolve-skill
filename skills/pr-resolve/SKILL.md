@@ -129,7 +129,20 @@ again at the same tier with a better prompt.
 
 ## 4. Verify
 
-Run `npm run typecheck` and the full test suite. Report the exact pass count.
+Run the project's typecheck and its full test suite, then report the exact pass
+count.
+
+**Find those commands in the repo; do not assume an ecosystem.** `npm run
+typecheck` and `npm test` are the Node spelling, not the general one — elsewhere
+it is `mypy` and `pytest`, `go vet` and `go test`, `cargo clippy` and
+`cargo test`, or a `Makefile` target. Read `package.json` scripts, `Makefile`,
+`pyproject.toml`, or the CI workflow to see what this project actually runs. A
+command that does not exist here fails in a way that looks like a broken repo.
+
+If the project has no typecheck or no test suite, **say that plainly** in the
+step 7 summary rather than reporting nothing. "This repo has no test suite;
+verified by reading the diff" is an honest result. A missing pass count that goes
+unmentioned reads as a pass that happened.
 
 ## 5. Push, and record the push time
 
