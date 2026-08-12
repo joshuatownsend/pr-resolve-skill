@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Claude Code **skill** repository. Its entire content is one skill:
 
-- `pr-resolve/SKILL.md` — the `pr-resolve` skill (frontmatter `name: pr-resolve`, `description: Resolve all PR review comments, verify, and merge`), followed by a numbered procedure the agent follows.
+- `pr-resolve/SKILL.md` — the `pr-resolve` skill: frontmatter declaring `name`, plus a `description` whose trigger phrases are what drive automatic invocation, followed by a numbered procedure the agent follows.
 
 A skill is markdown, not executable code: YAML frontmatter declaring `name` and `description`, then the body as the instructions. The directory name matches the frontmatter `name`.
 
@@ -20,4 +20,4 @@ The commands in `pr-resolve/SKILL.md` (`gh pr view <num> --comments`, `npm run t
 
 ## Editing the skill
 
-The whole file is agent-facing prose — wording is behavior. Keep steps imperative, ordered, and specific about what to verify (the existing body asks for an exact test pass count and gates merging on user approval). Preserve those verification and approval gates unless explicitly asked to change them, since they are what keeps the skill from merging unverified work.
+The whole file is agent-facing prose — wording is behavior. When widening the `description`, prefer phrasings observed in real transcripts over invented ones. Keep steps imperative, ordered, and specific about what to verify (the existing body asks for an exact test pass count and gates merging on user approval). Preserve those verification and approval gates unless explicitly asked to change them, since they are what keeps the skill from merging unverified work.

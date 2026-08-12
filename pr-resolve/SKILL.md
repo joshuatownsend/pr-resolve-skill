@@ -1,6 +1,6 @@
 ---
 name: pr-resolve
-description: Resolve all PR review comments, verify, and merge
+description: Resolve pull request review comments from bot reviewers, verify, and merge. Use when the user says "resolve PR comments", "review PR comments", "address the PR feedback", "fix the review comments", "check for bot comments", "check again for bot findings", "any new comments on the PR", "did Codex/Copilot review it", "codex has commented", "another round of bot review", "merge once the bots are clean", or "merge on green".
 ---
 
 Resolve every review finding on a PR, verify, and merge. Bot reviewers signal
