@@ -46,7 +46,36 @@ the latest reaction per user, which is the one to test.
 
 ## 3. Fix
 
-Fix each finding using a subagent, grouping related fixes into a single commit.
+**Default to fixing in this session.** Most findings arrive with a file, a line,
+and a diagnosis — the expensive part is already done, and a fresh subagent would
+only re-derive it. Delegation buys a clean context, not less effort; if the
+diagnosis is already in the finding, it buys nothing.
+
+Delegate only when the work would flood this session's context:
+
+- diagnosis needs wide reading — tracing call paths, hunting usages, or reading
+  files the finding does not name
+- the finding is a symptom and the cause is not yet located
+- the fix spans many files, or repeats mechanically across them
+
+Subagents edit the working tree directly and report what changed. Review the
+diff and keep commit responsibility here, so related fixes still group into a
+single commit. Run delegations in parallel only when the fixes are expected to
+touch disjoint files; serialize when unsure.
+
+### Choosing the subagent model
+
+Start at **Sonnet** — the right size for a bounded fix that needs real
+exploration, which is most delegated work. Depart from it only for a reason:
+
+- **Haiku** — bulk mechanical edits, fully specified, where volume rather than
+  difficulty is why the work is leaving this session
+- **Opus** — genuine design judgment, or subtle correctness and concurrency bugs
+- **Fable** — only with explicit user permission; ask before spawning one
+
+Escalate on evidence, not prediction — difficulty is hard to judge before the
+work is attempted. A wrong or incomplete result retries **one tier up**, not
+again at the same tier with a better prompt.
 
 ## 4. Verify
 
