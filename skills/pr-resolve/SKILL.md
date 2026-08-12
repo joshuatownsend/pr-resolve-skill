@@ -303,11 +303,24 @@ Then squash-merge: `gh pr merge <n> --squash --delete-branch`.
 **Check for stacked PRs before passing `--delete-branch`.** It deletes the remote
 branch, and if this PR's head branch is the base of an open child PR, GitHub
 closes that child — and a PR whose base branch is gone **cannot be reopened**.
-This is unrecoverable, so check first and drop the flag if anything is stacked:
+This is unrecoverable, so check first and drop the flag if anything is stacked.
+
+Check the **head** repository, not the one you are merging into. A PR's base
+branch always lives in that PR's own repository, so anything stacked on this
+branch is a PR in whichever repo holds the branch — the fork, when the PR came
+from one. Checking the base repo instead reports cross-repository stacks as
+clean, which is the dangerous direction to be wrong in:
 
 ```bash
-gh pr list --repo {owner}/{repo} --state open --base <this PR's head branch>
+HEAD_REPO=$(gh pr view <n> --json headRepositoryOwner,headRepository \
+  --jq '.headRepositoryOwner.login + "/" + .headRepository.name')
+HEAD_BRANCH=$(gh pr view <n> --json headRefName --jq '.headRefName')
+
+gh pr list --repo "$HEAD_REPO" --state open --base "$HEAD_BRANCH"
 ```
+
+If that repository cannot be listed, do not pass `--delete-branch`: a check you
+could not run is not a check that came back clean.
 
 Squash and branch deletion are repo policy in any case, not universal. Match what
 the repo does — check how its recent PRs were merged rather than assuming.
