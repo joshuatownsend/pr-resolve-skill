@@ -74,6 +74,10 @@ review that actually reviewed, or a reaction dated after the head push. Work out
 who to expect from the reviewers already active on this PR, or from the most
 recently merged PR in the repo when this is the first round.
 
+**Never put yourself in that roster.** Once you have replied in a thread you
+appear as an active reviewer, and step 6 excludes you from verdicts — so a roster
+containing your own login can never be satisfied, and the wait never ends.
+
 If no reviewer has engaged with the current head, the round is not clean — it has
 not happened yet. Wait and re-poll per step 6 instead of proceeding. Silence is
 the one signal that never means approval.
@@ -160,6 +164,13 @@ satisfies the test above, and the loop exits believing a reviewer responded when
 nothing but your own comment happened. Exclude yourself by login on every
 channel, reactions included. Only you are excluded — a human reviewer's comment
 or review is as much a verdict as a bot's.
+
+Login is a proxy for "not mine", and it is exact only while you are the only
+author posting under that account. If the user reviews from the same account you
+are authenticated as, this filter discards their verdict along with your own
+replies, and an expected human reviewer can never be seen to respond. Establish
+which case you are in rather than assuming; where the account is shared, record
+the ids of what you post and exclude those ids instead of the login.
 
 Re-run step 1 to poll, then apply the exclusion:
 
