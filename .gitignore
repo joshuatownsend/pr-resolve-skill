@@ -1,3 +1,8 @@
 # Session-scoped artifact: a hook auto-captures ★ Insight blocks here,
 # stamped with the originating Claude Code session id. Not project content.
 /INSIGHTS.md
+
+# Field reports from live runs of the skill. Kept local: they quote review
+# threads and CI failures from other repositories verbatim. Findings worth
+# keeping get promoted into DECISIONS.md or the skill itself.
+/feedback/

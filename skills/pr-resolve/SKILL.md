@@ -4,7 +4,7 @@ description: Resolve pull request review comments from bot reviewers, verify, an
 ---
 
 Resolve every review finding on a PR, verify, and merge. Bot reviewers signal
-findings and verdicts through three different channels — gather all three, every
+findings and verdicts through four different channels — gather all four, every
 round. `gh pr view --comments` alone is not sufficient and will show an empty
 result while findings exist.
 
@@ -15,9 +15,28 @@ report what you found, and stop. Go on to fix, verify, push, and comment only
 once the user asks for the findings to be resolved, or has already authorized
 it. A status question must never turn itself into a push.
 
-## 1. Gather findings from all three sources
+## 1. Gather findings from all four sources
 
-Run all three. `--paginate` matters: a busy PR silently truncates otherwise.
+**First establish two facts about this repository: who reviews here, and which
+channels they actually use.** Both are per-repo, both are cheap to determine from
+the most recently merged PRs, and every later decision rests on them — who to
+block on, who to re-request, and whether a round counts as clean.
+
+**The roster.** Work out who to expect from the reviewers already active on this
+PR, and from the most recently merged PR when this is the first round. **Never
+put yourself in it:** once you have replied in a thread you appear as an active
+reviewer, and step 6 excludes you from verdicts, so a roster containing your own
+login can never be satisfied and the wait never ends.
+
+**The live channels.** Gather all four below every round regardless — but know
+which ones carry signal here, because reviewers do not share a channel. Codex
+reports its verdict by reaction; `claude[bot]` never reacts at all and may put an
+entire review in a conversation comment; Copilot uses reviews and inline
+comments. So an empty reactions result in a repo without Codex means the channel
+is unused, not that a verdict is pending — and waiting on a channel this repo
+does not use is a wait that never ends.
+
+Run all four. `--paginate` matters: a busy PR silently truncates otherwise.
 
 ```bash
 # a. Inline review comments
@@ -31,26 +50,80 @@ gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate \
 
 # c. PR-level reactions (note: issues/, not pulls/ — reactions are issue-scoped)
 gh api repos/{owner}/{repo}/issues/<n>/reactions --paginate \
-  --jq '[.[] | {user: .user.login, content, created_at}]
-        | group_by(.user) | map(max_by(.created_at))'
+  --jq '.[] | {user: .user.login, content, created_at}'
+
+# d. PR conversation comments — a full review, or a verdict, may be posted here
+#    instead of as a review. This is not the same endpoint as (a): inline
+#    comments are attached to lines, these are attached to the PR.
+gh api repos/{owner}/{repo}/issues/<n>/comments --paginate \
+  --jq '.[] | {user: .user.login, created_at, body}'
 ```
 
-**A Copilot review saying "generated no new comments" is not a clean verdict.**
-Read the full review body regardless — findings are routinely suppressed inside
-`<details>` blocks while the summary line reports nothing.
+**Channel (d) is the one most often skipped, and it is where `claude[bot]`
+frequently reports.** Sampling twenty public PRs it had touched, its output was
+in conversation comments on six of them and *only* there on two — a complete
+review with findings in one case, and the verdict "No findings — reviewed
+64c224d" in another. Both are invisible to (a), (b) and (c). A reviewer is not
+absent because it filed nothing you recognized as a review.
+
+**Keep every `--jq` filter streaming, one item at a time.** Under `--paginate`,
+`gh` applies `--jq` to each page *separately*, so any filter that aggregates —
+`group_by`, `max_by`, `length`, `add` — silently computes per page and emits one
+result per page. A reactions filter ending `group_by(.user) |
+map(max_by(.created_at))` therefore returns a user once *per page* on a PR with
+more than one page, and the latest-reaction-per-user guarantee fails without any
+error. There is no in-`gh` aggregation to switch to: `gh` refuses `--slurp`
+together with `--jq`, and `--slurp` on its own nests pages rather than flattening
+them. Filter per item, as above, and do the picking yourself.
+
+**Read every review body in full. Never merely count reviews, and never judge
+one by its `state` or `submitted_at`.** That metadata tells you something was
+posted, not what it said, and both failure modes below are invisible from the
+metadata alone:
+
+- **A review reporting nothing may still carry findings.** A Copilot review
+  saying "generated no new comments" is not a clean verdict — findings are
+  routinely suppressed inside `<details>` blocks while the summary line reports
+  nothing.
+- **A review may represent no review at all.** Reviewers post skipped, errored,
+  and quota-exhausted notices as ordinary reviews, with a plausible `state` and
+  an accurate timestamp — a body reading "Code review skipped — your
+  organization's overage spend limit has been reached" is zero review coverage
+  wearing the shape of a completed review.
+
+**A skipped, errored, or quota-exhausted review counts as no reviewer.** That
+reviewer has not engaged, so it fails *Empty is not clean* below rather than
+satisfying it — this is the more dangerous case of the two, because it looks
+like success.
+
+A third variant is an **invitation** rather than a failure, and it is the one you
+can act on. `claude[bot]` posts, on repos configured for manual review:
+
+> This repository is configured for manual code reviews. Comment `@claude review`
+> for a one-time review, or `@claude review always` to subscribe this PR to a
+> review on every future push.
+
+That is zero coverage too, and waiting for a verdict that follows it waits
+forever — but the remedy is one comment, not an admin change. Trigger the review
+and wait a round. Distinguish the three before reporting: a **quota or spend cap**
+needs an account change only the user can make, an **error** may clear on retry,
+and an **invitation** just needs asking.
 
 ### Empty is not clean
 
 Nothing found and nobody heard from is not a clean PR — it is a PR no one has
-looked at yet. Before treating any gather as clean, confirm each expected
-reviewer has engaged with the **current** head: an inline comment, a submitted
-review, or a reaction dated after the head push. Work out who to expect from the
-reviewers already active on this PR, or from the most recently merged PR in the
-repo when this is the first round.
+looked at yet. Before treating any gather as clean, confirm every reviewer on the
+roster has engaged with the **current** head: an inline comment, a submitted
+review that actually reviewed, or a reaction dated after the head push.
 
 If no reviewer has engaged with the current head, the round is not clean — it has
 not happened yet. Wait and re-poll per step 6 instead of proceeding. Silence is
 the one signal that never means approval.
+
+"Not clean" obliges you to *say so*, not to refuse to move. The wait is bounded:
+once a reviewer is not coming — because it cannot run, or is not the kind that
+returns unbidden — report that and let the user decide, per step 8. Never leave
+the user stuck waiting on a bot that will never answer.
 
 ## 2. Reaction semantics
 
@@ -61,8 +134,8 @@ Codex **swaps** its reaction rather than adding one — the 👍 from the previo
 round disappears when 👀 appears. So never ask "has this bot ever thumbs-upped
 this PR." Ask: **is this bot's latest reaction a 👍, and is it newer than my most
 recent push?** A stale 👍 from an earlier commit is indistinguishable from a
-fresh one except by timestamp. The `group_by | max_by` in step 1c returns only
-the latest reaction per user, which is the one to test.
+fresh one except by timestamp. Step 1c lists every reaction; take the newest
+`created_at` per user and test that one.
 
 ## 3. Fix
 
@@ -99,7 +172,20 @@ again at the same tier with a better prompt.
 
 ## 4. Verify
 
-Run `npm run typecheck` and the full test suite. Report the exact pass count.
+Run the project's typecheck and its full test suite, then report the exact pass
+count.
+
+**Find those commands in the repo; do not assume an ecosystem.** `npm run
+typecheck` and `npm test` are the Node spelling, not the general one — elsewhere
+it is `mypy` and `pytest`, `go vet` and `go test`, `cargo clippy` and
+`cargo test`, or a `Makefile` target. Read `package.json` scripts, `Makefile`,
+`pyproject.toml`, or the CI workflow to see what this project actually runs. A
+command that does not exist here fails in a way that looks like a broken repo.
+
+If the project has no typecheck or no test suite, **say that plainly** in the
+step 7 summary rather than reporting nothing. "This repo has no test suite;
+verified by reading the diff" is an honest result. A missing pass count that goes
+unmentioned reads as a pass that happened.
 
 ## 5. Push, and record the push time
 
@@ -117,7 +203,8 @@ authored well before it was pushed — prefer the captured value.
 ## 6. Wait for a fresh verdict
 
 Applies after every push, not just the first — though *How many rounds* below
-decides when blocking on the result is actually warranted. A verdict is one of:
+decides when blocking on the result is actually warranted. A verdict is one of
+the following, **posted by someone other than you**:
 
 - a new inline comment, **or**
 - a submitted review, **or**
@@ -126,9 +213,73 @@ decides when blocking on the result is actually warranted. A verdict is one of:
 and explicitly **not** 👀. ISO-8601 UTC timestamps compare correctly as plain
 strings, so `created_at > $PUSH_TIME` is a valid test.
 
-Re-run step 1 to poll. If a verdict brings new findings, return to step 3 and
-repeat the loop. If no verdict arrives after a reasonable wait, report the wait
-and ask the user how to proceed — do not treat silence as approval.
+**Your own activity is not a verdict.** Replying to a review thread — the normal
+way to decline a finding — creates a `COMMENTED` review *and* an inline comment
+under your own login, both newer than `PUSH_TIME`. Read literally, your own reply
+satisfies the test above, and the loop exits believing a reviewer responded when
+nothing but your own comment happened. Exclude yourself by login on every
+channel, reactions included. Only you are excluded — a human reviewer's comment
+or review is as much a verdict as a bot's.
+
+Login is a proxy for "not mine", and it is exact only while you are the only
+author posting under that account. If the user reviews from the same account you
+are authenticated as, this filter discards their verdict along with your own
+replies, and an expected human reviewer can never be seen to respond. Establish
+which case you are in rather than assuming; where the account is shared, record
+the ids of what you post and exclude those ids instead of the login.
+
+Re-run step 1 to poll, then apply the exclusion:
+
+```bash
+ME=$(gh api user --jq .login)
+
+gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate \
+  --jq ".[] | select(.submitted_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
+        | {user: .user.login, state, submitted_at, body}"
+
+gh api repos/{owner}/{repo}/pulls/<n>/comments --paginate \
+  --jq ".[] | select(.created_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
+        | {user: .user.login, path, line, body}"
+
+gh api repos/{owner}/{repo}/issues/<n>/reactions --paginate \
+  --jq ".[] | select(.created_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
+        | {user: .user.login, content, created_at}"
+
+gh api repos/{owner}/{repo}/issues/<n>/comments --paginate \
+  --jq ".[] | select(.created_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
+        | {user: .user.login, created_at, body}"
+```
+
+Keep `body` in every query that has one, for the reason step 1 gives. A verdict
+that names the commit it reviewed — "No findings — reviewed 64c224d" — is a
+better freshness test than any timestamp: compare that SHA to the current head
+rather than trusting `created_at`, which only tells you when it was posted.
+Where the expected reviewers are all bots, `select(.user.type == "Bot")` is an
+equivalent filter — `.user.type` is `"Bot"` for
+`copilot-pull-request-reviewer[bot]` and `"User"` for humans — but it also drops
+human reviewers, so prefer the login exclusion unless you have established the
+roster is bots only.
+
+A `PENDING` review carries a null `submitted_at`, and the filter above drops it
+silently — which is what you want, since a review nobody has submitted is not a
+verdict. No null guard is needed; jq orders `null` below every string, so the
+comparison is `false` rather than an error.
+
+**One verdict is not the round.** Keep polling until *every* expected reviewer
+has either a fresh verdict or a state that says it is not coming (*Where each
+reviewer stands*, below) — not until the first one answers. Compare the logins
+that come back against the roster you established in step 1.
+
+Reviewers do not answer together, and the gap is long enough to lose one: two
+bots reviewing the same push landed 73 seconds apart in a real run. A poll that
+stops at the first verdict leaves the second reviewer's findings unread, and the
+next push then moves the head out from under them — so they are never gathered
+at all, and the round looks cleaner than it was. This is the same mistake as
+counting inline comments, arriving from a different direction.
+
+If the round brings new findings, return to step 3 and repeat the loop. If a
+reviewer that should still answer does not after a reasonable wait, report which
+one and ask the user how to proceed — do not treat silence as approval.
 
 ### Where each reviewer stands
 
@@ -141,7 +292,13 @@ from the API:
   queued; wait. (GitHub clears `reviewRequests` once the review lands, so the
   timeline is the durable record.)
 - **In progress** — its latest reaction is 👀. Wait.
-- **Fresh verdict** — a comment, review, or 👍 after `PUSH_TIME`. Consume it.
+- **Fresh verdict** — a comment, review, or 👍 after `PUSH_TIME`, from someone
+  other than you. Consume it.
+- **Responded without reviewing** — its latest review is a skipped, errored, or
+  quota-exhausted notice (step 1). It has answered, so it is not pending, and it
+  will keep answering identically until a condition outside this PR changes.
+  **Never wait for its real verdict — that wait does not end.** Count it as not
+  having reviewed, and tell the user what the notice said.
 - **Done, not pending** — reviewed an older head, with no newer request. **It is
   not coming back on its own.** Never block on this state: a reviewer that acts
   only on request is finished, not slow. Blocking here hangs forever.
@@ -170,6 +327,13 @@ if neither appears, it did not register. Confirm the outcome by watching for the
 review itself, never by the call succeeding.
 
 Codex re-reviews automatically on every push, and on a `@codex review` comment.
+
+`claude[bot]` is mention-triggered wherever the repo is set to manual review:
+`@claude review` gets one review, `@claude review always` subscribes the PR to a
+review on every later push. Check which mode is in effect before waiting on it —
+in manual mode it will never review unbidden, however long you wait, and the
+notice quoted in step 1 is how it says so. It does not use reactions, so its
+verdict arrives as a review or a conversation comment, never as a 👍.
 
 ### How many rounds
 
@@ -212,7 +376,71 @@ a converged round per step 6, CI actually green, whichever was named. Verify the
 condition; never infer that it was met. If it is ambiguous, only partly met, or
 rests on a signal you could not confirm, ask instead of merging.
 
+**When a reviewer produced no coverage, surface it — but never treat it as a
+veto.** Bot review is best-effort infrastructure, not a guarantee. Exhausted
+Actions minutes, a quota or spend limit, a bot that was never installed on the
+repo, or a plain outage all end the same way: a reviewer that will not report on
+this PR no matter how long you wait. Blocking the merge on that would make the PR
+unmergeable for reasons that have nothing to do with its code, and usually for
+reasons the user cannot fix from here.
+
+The failure to avoid is the *silent* one — describing a round as clean when a
+reviewer never ran, or letting "merge once the bots are clean" resolve itself as
+satisfied when the condition could not be evaluated at all. A round containing a
+skipped review can otherwise look converged: nothing substantive was raised,
+because nothing was reviewed.
+
+So report the gap concretely and let the user choose. Say which reviewers
+reported, which did not, and what the notice gave as the reason. Then offer the
+options that actually exist:
+
+- merge now, accepting the reduced coverage
+- re-request or re-trigger the reviewer and wait one more round
+- wait, when the cause is temporary and the user knows when it clears
+
+Ask; do not assume, and do not block. The user is entitled to merge a PR that one
+of its bots could not look at — they just should not learn that afterwards.
+
 Approval is scoped to one PR. A single session often takes several PRs through
 this skill, and permission granted for one is not permission for the next.
 
-Then squash-merge, using `--admin` if branch protection blocks.
+Then squash-merge:
+
+```bash
+gh pr merge <n> --squash
+```
+
+**Add `--delete-branch` only after the check below comes back empty** — it is
+deliberately not in the command above, because the command is the part that gets
+copied and the check is the part that gets skipped.
+
+**Check for stacked PRs before passing `--delete-branch`.** It deletes the remote
+branch, and if this PR's head branch is the base of an open child PR, GitHub
+closes that child — and a PR whose base branch is gone **cannot be reopened**.
+This is unrecoverable, so check first and drop the flag if anything is stacked.
+
+Check the **head** repository, not the one you are merging into. A PR's base
+branch always lives in that PR's own repository, so anything stacked on this
+branch is a PR in whichever repo holds the branch — the fork, when the PR came
+from one. Checking the base repo instead reports cross-repository stacks as
+clean, which is the dangerous direction to be wrong in:
+
+```bash
+HEAD_REPO=$(gh pr view <n> --json headRepositoryOwner,headRepository \
+  --jq '.headRepositoryOwner.login + "/" + .headRepository.name')
+HEAD_BRANCH=$(gh pr view <n> --json headRefName --jq '.headRefName')
+
+gh pr list --repo "$HEAD_REPO" --state open --base "$HEAD_BRANCH"
+```
+
+If that repository cannot be listed, do not pass `--delete-branch`: a check you
+could not run is not a check that came back clean.
+
+Squash and branch deletion are repo policy in any case, not universal. Match what
+the repo does — check how its recent PRs were merged rather than assuming.
+
+**Never bypass branch protection or required reviews.** If the merge is blocked,
+that is the protection working — report the specific blocker and stop. Approval
+to merge is not approval to override the checks that approval was conditioned
+on, and `--admin` is exactly the move that turns "merge on green" into a merge
+on red. Use it only if the user, told what is blocking, explicitly asks for it.
