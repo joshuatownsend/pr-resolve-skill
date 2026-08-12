@@ -83,4 +83,7 @@ deliberate.
 - The pipeline being ported to a different JSON tool whose `group_by` genuinely
   requires sorted input.
 
-**Source:** §3.1 of `feedback/2026-08-12-field-report-pr-267.md`.
+**Origin:** raised by Copilot on a live PR and declined, twice, on 2026-08-12.
+The field report covering that run is kept local rather than committed; the
+evidence that matters is reproduced in full above, so this entry stands on its
+own.
