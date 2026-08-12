@@ -14,6 +14,47 @@ it holds until its stated condition is met.
 
 ---
 
+## Inline code spans may wrap across a newline
+
+**Decided:** 2026-08-12 · **Status:** closed
+
+**Decision: do not reflow prose to keep an inline code span on one line.**
+
+### What was rejected
+
+> The inline-code span for the example filter is split across a newline [...]
+> GitHub-flavored Markdown doesn't render multi-line inline-code reliably, so
+> this can show up as raw backticks and reduce readability.
+
+The premise is false. CommonMark converts a line ending inside a code span to a
+space, and GitHub implements it. Checked against GitHub's own renderer:
+
+```console
+$ gh api markdown -f mode=gfm -f text='A filter ending `group_by(.user) |
+map(max_by(.created_at))` therefore returns a user once per page.'
+<p>A filter ending <code class="notranslate">group_by(.user) | map(max_by(.created_at))</code> therefore returns a user once per page.</p>
+```
+
+One clean `<code>` element, no raw backticks. Nothing to fix.
+
+### Why it matters more here than in most repos
+
+`SKILL.md` is read by an agent as raw text far more often than it is rendered,
+so hard-wrapping prose at a fixed width is the priority and a code span that
+happens to straddle the wrap is not a defect. Reflowing to satisfy this would
+also imply the constraint is real, which is the same trap as the `sort_by`
+entry below.
+
+### What would justify revisiting
+
+- GitHub's renderer changing this behavior — re-run the command above and check
+  whether the `<code>` element still comes back intact.
+- The file gaining a consumer that renders it with a non-CommonMark parser.
+
+**Origin:** raised by Copilot in a suppressed-comment block, 2026-08-12.
+
+---
+
 ## `group_by(.user)` in step 1c is correct as written
 
 **Decided:** 2026-08-12 · **Status:** closed
