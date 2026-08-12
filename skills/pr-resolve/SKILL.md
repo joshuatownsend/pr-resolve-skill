@@ -282,6 +282,18 @@ this skill, and permission granted for one is not permission for the next.
 
 Then squash-merge: `gh pr merge <n> --squash --delete-branch`.
 
+**Check for stacked PRs before passing `--delete-branch`.** It deletes the remote
+branch, and if this PR's head branch is the base of an open child PR, GitHub
+closes that child — and a PR whose base branch is gone **cannot be reopened**.
+This is unrecoverable, so check first and drop the flag if anything is stacked:
+
+```bash
+gh pr list --repo {owner}/{repo} --state open --base <this PR's head branch>
+```
+
+Squash and branch deletion are repo policy in any case, not universal. Match what
+the repo does — check how its recent PRs were merged rather than assuming.
+
 **Never bypass branch protection or required reviews.** If the merge is blocked,
 that is the protection working — report the specific blocker and stop. Approval
 to merge is not approval to override the checks that approval was conditioned
