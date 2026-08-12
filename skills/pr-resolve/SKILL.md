@@ -295,10 +295,27 @@ a converged round per step 6, CI actually green, whichever was named. Verify the
 condition; never infer that it was met. If it is ambiguous, only partly met, or
 rests on a signal you could not confirm, ask instead of merging.
 
+**A reviewer that responded without reviewing does not satisfy any merge
+condition — stop and ask.** A skipped, errored, or quota-exhausted review (step
+1) is a terminal state that ends the wait while carrying no finding, so a round
+containing one can otherwise look converged: nothing substantive was raised,
+because nothing was reviewed. "Clean" in a conditional approval means the
+reviewers looked and found nothing, never that one of them could not run. Report
+which reviewer produced no coverage and what its notice said, and let the user
+decide whether to merge without it.
+
 Approval is scoped to one PR. A single session often takes several PRs through
 this skill, and permission granted for one is not permission for the next.
 
-Then squash-merge: `gh pr merge <n> --squash --delete-branch`.
+Then squash-merge:
+
+```bash
+gh pr merge <n> --squash
+```
+
+**Add `--delete-branch` only after the check below comes back empty** — it is
+deliberately not in the command above, because the command is the part that gets
+copied and the check is the part that gets skipped.
 
 **Check for stacked PRs before passing `--delete-branch`.** It deletes the remote
 branch, and if this PR's head branch is the base of an open child PR, GitHub
