@@ -16,11 +16,17 @@ Copy the `pr-resolve/` directory into either location:
 
 ```bash
 # available in every project
+mkdir -p ~/.claude/skills
 cp -r pr-resolve ~/.claude/skills/
 
 # or scoped to one project
+mkdir -p .claude/skills
 cp -r pr-resolve .claude/skills/
 ```
+
+The `mkdir -p` matters. Without it, `cp` treats a missing `skills` as the
+destination name and silently lands `SKILL.md` at `~/.claude/skills/SKILL.md`,
+reporting success while leaving the skill undiscoverable.
 
 Both hot-reload — no session restart needed.
 
