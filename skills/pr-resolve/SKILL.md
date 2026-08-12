@@ -117,7 +117,8 @@ authored well before it was pushed — prefer the captured value.
 ## 6. Wait for a fresh verdict
 
 Applies after every push, not just the first — though *How many rounds* below
-decides when blocking on the result is actually warranted. A verdict is one of:
+decides when blocking on the result is actually warranted. A verdict is one of
+the following, **posted by someone other than you**:
 
 - a new inline comment, **or**
 - a submitted review, **or**
@@ -126,7 +127,35 @@ decides when blocking on the result is actually warranted. A verdict is one of:
 and explicitly **not** 👀. ISO-8601 UTC timestamps compare correctly as plain
 strings, so `created_at > $PUSH_TIME` is a valid test.
 
-Re-run step 1 to poll. If a verdict brings new findings, return to step 3 and
+**Your own activity is not a verdict.** Replying to a review thread — which step
+3 tells you to do when you decline a finding — creates a `COMMENTED` review *and*
+an inline comment under your own login, both newer than `PUSH_TIME`. Read
+literally, your reply satisfies the test above, and the loop exits believing a
+reviewer responded when nothing but your own comment happened. Exclude yourself
+by login on every channel, reactions included. Only you are excluded — a human
+reviewer's comment or review is as much a verdict as a bot's.
+
+Re-run step 1 to poll, then apply the exclusion:
+
+```bash
+ME=$(gh api user --jq .login)
+
+gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate \
+  --jq ".[] | select(.submitted_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
+        | {user: .user.login, state, submitted_at, body}"
+
+gh api repos/{owner}/{repo}/pulls/<n>/comments --paginate \
+  --jq ".[] | select(.created_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
+        | {user: .user.login, path, line, body}"
+```
+
+Keep `body` in both, for the reason step 1 gives. Where the expected reviewers
+are all bots, `select(.user.type == "Bot")` is an equivalent filter —
+`.user.type` is `"Bot"` for `copilot-pull-request-reviewer[bot]` and `"User"`
+for humans — but it also drops human reviewers, so prefer the login exclusion
+unless you have established the roster is bots only.
+
+If a verdict brings new findings, return to step 3 and
 repeat the loop. If no verdict arrives after a reasonable wait, report the wait
 and ask the user how to proceed — do not treat silence as approval.
 
