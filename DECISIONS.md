@@ -14,6 +14,48 @@ it holds until its stated condition is met.
 
 ---
 
+## `null` needs no guard in the step 6 timestamp filters
+
+**Decided:** 2026-08-12 · **Status:** closed
+
+**Decision: do not add a null guard to `select(.submitted_at > $PUSH_TIME)`.**
+
+### What was rejected
+
+> `submitted_at` is null/missing for `PENDING` reviews [...] jq will error when
+> comparing null to a string, which would break the polling loop on PRs with
+> pending reviews present.
+
+The premise is false — jq has a total ordering across types (`null` < `false` <
+`true` < numbers < strings < arrays < objects), so the comparison yields `false`
+rather than raising. Checked against `gh`'s embedded jq:
+
+```console
+$ gh api rate_limit --jq '[{"a":null},{"a":"2026-01-01T00:00:00Z"}]
+                          | map({val: .a, gt: (.a > "2025-01-01T00:00:00Z")})'
+[{"gt":false,"val":null},{"gt":true,"val":"2026-01-01T00:00:00Z"}]
+$ echo $?
+0
+```
+
+The null row is dropped, exit code 0, no error. That is also the **correct**
+outcome on the merits: a `PENDING` review is one nobody has submitted, so it must
+not count as a verdict. A guard would add ceremony to reach the same result.
+
+### What would justify revisiting
+
+- jq changing its cross-type ordering — re-run the command above and check for a
+  non-zero exit.
+- The filter being rewritten to do arithmetic or string operations on
+  `submitted_at`, where `null` genuinely would raise.
+
+**Origin:** raised by Copilot in a suppressed-comment block, 2026-08-12. This is
+the third bot claim in one PR asserting false jq semantics, after `group_by`
+adjacency and `--slurp`. **Test any jq-semantics claim against `gh`'s embedded jq
+before acting on it** — all three took one command to disprove.
+
+---
+
 ## Inline code spans may wrap across a newline
 
 **Decided:** 2026-08-12 · **Status:** closed

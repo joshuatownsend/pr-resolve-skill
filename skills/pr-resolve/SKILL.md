@@ -179,11 +179,17 @@ gh api repos/{owner}/{repo}/issues/<n>/reactions --paginate \
         | {user: .user.login, content, created_at}"
 ```
 
-Keep `body` in the review and comment queries, for the reason step 1 gives. Where the expected reviewers
-are all bots, `select(.user.type == "Bot")` is an equivalent filter —
-`.user.type` is `"Bot"` for `copilot-pull-request-reviewer[bot]` and `"User"`
-for humans — but it also drops human reviewers, so prefer the login exclusion
-unless you have established the roster is bots only.
+Keep `body` in the review and comment queries, for the reason step 1 gives.
+Where the expected reviewers are all bots, `select(.user.type == "Bot")` is an
+equivalent filter — `.user.type` is `"Bot"` for
+`copilot-pull-request-reviewer[bot]` and `"User"` for humans — but it also drops
+human reviewers, so prefer the login exclusion unless you have established the
+roster is bots only.
+
+A `PENDING` review carries a null `submitted_at`, and the filter above drops it
+silently — which is what you want, since a review nobody has submitted is not a
+verdict. No null guard is needed; jq orders `null` below every string, so the
+comparison is `false` rather than an error.
 
 If a verdict brings new findings, return to step 3 and
 repeat the loop. If no verdict arrives after a reasonable wait, report the wait
