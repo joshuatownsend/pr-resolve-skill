@@ -1,5 +1,7 @@
 # pr-resolve
 
+![pr-resolve — a Claude Code skill for pull request review loops](assets/social-card.png)
+
 A Claude Code skill that takes a pull request from "the bots have reviewed it" to
 merged — gathering every review finding, fixing them, verifying, and looping
 until the reviewers and the agent actually agree.
@@ -11,17 +13,29 @@ a clean PR while five real defects sit unaddressed.
 
 ## Install
 
+### As a plugin (recommended)
+
+This repo is also a Claude Code marketplace, so the plugin installs and updates
+in place:
+
+```
+/plugin marketplace add joshuatownsend/pr-resolve-skill
+/plugin install pr-resolve@joshuatownsend-skills
+```
+
+### By hand
+
 Skills are discovered by scanning for subdirectories containing a `SKILL.md`.
-Copy the `pr-resolve/` directory into either location:
+Copy `skills/pr-resolve/` into either location:
 
 ```bash
 # available in every project
 mkdir -p ~/.claude/skills
-cp -r pr-resolve ~/.claude/skills/
+cp -r skills/pr-resolve ~/.claude/skills/
 
 # or scoped to one project
 mkdir -p .claude/skills
-cp -r pr-resolve .claude/skills/
+cp -r skills/pr-resolve .claude/skills/
 ```
 
 The `mkdir -p` matters. Without it, `cp` treats a missing `skills` as the

@@ -1,0 +1,10 @@
+{
+  "name": "pr-resolve",
+  "description": "Resolve pull request review comments from bot reviewers, verify, and merge",
+  "version": "1.0.0",
+  "author": {
+    "name": "Josh Townsend"
+  },
+  "homepage": "https://github.com/joshuatownsend/pr-resolve-skill",
+  "keywords": ["pull-request", "code-review", "github", "copilot", "codex"]
+}

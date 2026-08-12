@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "joshuatownsend-skills",
+  "version": "1.0.0",
+  "description": "Claude Code skills for pull request review workflows",
+  "owner": {
+    "name": "Josh Townsend"
+  },
+  "plugins": [
+    {
+      "name": "pr-resolve",
+      "description": "Resolve pull request review comments from bot reviewers, verify, and merge. Gathers findings from inline comments, review bodies, and reactions, then loops until the reviewers and the agent converge.",
+      "version": "1.0.0",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
