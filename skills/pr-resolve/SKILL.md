@@ -1,12 +1,19 @@
 ---
 name: pr-resolve
-description: Resolve all PR review comments, verify, and merge
+description: Resolve pull request review comments from bot reviewers, verify, and merge. Use when the user says "resolve PR comments", "review PR comments", "address the PR feedback", "fix the review comments", "check for bot comments", "check again for bot findings", "any new comments on the PR", "did Codex/Copilot review it", "codex has commented", "another round of bot review", "merge once the bots are clean", or "merge on green".
 ---
 
 Resolve every review finding on a PR, verify, and merge. Bot reviewers signal
 findings and verdicts through three different channels — gather all three, every
 round. `gh pr view --comments` alone is not sufficient and will show an empty
 result while findings exist.
+
+**Steps 1–2 only read. Step 3 onward mutates.** Several of the phrases that
+invoke this skill are questions — "any new comments on the PR", "did Codex
+review it", "check for bot comments". When the request is a question, gather,
+report what you found, and stop. Go on to fix, verify, push, and comment only
+once the user asks for the findings to be resolved, or has already authorized
+it. A status question must never turn itself into a push.
 
 ## 1. Gather findings from all three sources
 
@@ -123,10 +130,46 @@ Re-run step 1 to poll. If a verdict brings new findings, return to step 3 and
 repeat the loop. If no verdict arrives after a reasonable wait, report the wait
 and ask the user how to proceed — do not treat silence as approval.
 
-**Do not use a re-review request as a completion signal.** `POST
-repos/{owner}/{repo}/pulls/<n>/requested_reviewers` returns 200 and leaves
-`requested_reviewers` empty for the Copilot bot, so a successful response does
-not confirm a review was queued.
+### Where each reviewer stands
+
+Reviewers behave differently: some re-review on every push, others review once
+per request and then stop. Do not model them by name — resolve each one's state
+from the API:
+
+- **Pending** — the reviewer appears in `reviewRequests`, or has a
+  `review_requested` timeline event newer than its latest review. A review is
+  queued; wait. (GitHub clears `reviewRequests` once the review lands, so the
+  timeline is the durable record.)
+- **In progress** — its latest reaction is 👀. Wait.
+- **Fresh verdict** — a comment, review, or 👍 after `PUSH_TIME`. Consume it.
+- **Done, not pending** — reviewed an older head, with no newer request. **It is
+  not coming back on its own.** Never block on this state: a reviewer that acts
+  only on request is finished, not slow. Blocking here hangs forever.
+
+When a **substantive** round pushed changes after a once-per-request reviewer's
+verdict, re-request that reviewer as part of the push — its stale verdict does
+not cover the new code. After a cosmetic-only round, the stale verdict stands.
+
+**Re-triggering Copilot requires GraphQL — the REST call silently does nothing.**
+Copilot is a Bot, not a user, so `POST .../requested_reviewers` with
+`reviewers: ["Copilot"]` returns **201 and discards the request**: no pending
+entry, no timeline event, no review. It looks for a user of that name. Use:
+
+```bash
+gh api graphql -f query='mutation($pr:ID!,$bot:ID!){
+  requestReviews(input:{pullRequestId:$pr, botIds:[$bot], union:true}){
+    pullRequest{ reviewRequests(first:5){nodes{requestedReviewer{... on Bot{login}}}} } } }' \
+  -f pr="<PR node id>" -f bot="<bot id>"
+```
+
+`union: true` keeps existing reviewers. Get the bot id from any earlier
+`ReviewRequestedEvent` in the repo — query `timelineItems(itemTypes:
+[REVIEW_REQUESTED_EVENT])` and read `requestedReviewer` — it is stable across
+PRs. A real request shows up in `reviewRequests` *and* adds a timeline event;
+if neither appears, it did not register. Confirm the outcome by watching for the
+review itself, never by the call succeeding.
+
+Codex re-reviews automatically on every push, and on a `@codex review` comment.
 
 ### How many rounds
 

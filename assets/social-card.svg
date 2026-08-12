@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2f81f7"/>
+      <stop offset="55%" stop-color="#a371f7"/>
+      <stop offset="100%" stop-color="#3fb950"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1280" height="6" fill="url(#accent)"/>
+
+  <g transform="translate(96, 150)">
+    <text x="0" y="0" font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="92" font-weight="700" fill="#e6edf3">pr-resolve</text>
+    <text x="0" y="62" font-family="Segoe UI, 'DejaVu Sans', Arial, sans-serif" font-size="33" fill="#8b949e">A Claude Code skill for pull request review loops</text>
+  </g>
+
+  <g transform="translate(96, 330)">
+    <text x="0" y="0" font-family="Segoe UI, 'DejaVu Sans', Arial, sans-serif" font-size="21" fill="#6e7681" letter-spacing="2">GATHERS EVERY CHANNEL A REVIEW BOT SPEAKS THROUGH</text>
+    <g font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="24" fill="#c9d1d9">
+      <rect x="0" y="26" width="336" height="54" rx="10" fill="#1f2937" stroke="#30363d"/>
+      <text x="22" y="60">pulls/:n/comments</text>
+      <rect x="360" y="26" width="300" height="54" rx="10" fill="#1f2937" stroke="#30363d"/>
+      <text x="382" y="60">pulls/:n/reviews</text>
+      <rect x="684" y="26" width="330" height="54" rx="10" fill="#1f2937" stroke="#30363d"/>
+      <text x="706" y="60">issues/:n/reactions</text>
+    </g>
+  </g>
+
+  <g transform="translate(96, 470)">
+    <rect x="0" y="0" width="1088" height="1" fill="#21262d"/>
+    <text x="0" y="46" font-family="Segoe UI, 'DejaVu Sans', Arial, sans-serif" font-size="27" fill="#8b949e">
+      <tspan fill="#3fb950" font-weight="600">Silence never means approval.</tspan>
+      <tspan dx="14">Loops until the bots and the agent converge.</tspan>
+    </text>
+    <text x="0" y="96" font-family="Consolas, 'DejaVu Sans Mono', monospace" font-size="22" fill="#6e7681">github.com/joshuatownsend/pr-resolve-skill</text>
+  </g>
+</svg>
