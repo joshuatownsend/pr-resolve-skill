@@ -32,6 +32,19 @@ gh api repos/{owner}/{repo}/issues/<n>/reactions --paginate \
 Read the full review body regardless — findings are routinely suppressed inside
 `<details>` blocks while the summary line reports nothing.
 
+### Empty is not clean
+
+Nothing found and nobody heard from is not a clean PR — it is a PR no one has
+looked at yet. Before treating any gather as clean, confirm each expected
+reviewer has engaged with the **current** head: an inline comment, a submitted
+review, or a reaction dated after the head push. Work out who to expect from the
+reviewers already active on this PR, or from the most recently merged PR in the
+repo when this is the first round.
+
+If no reviewer has engaged with the current head, the round is not clean — it has
+not happened yet. Wait and re-poll per step 6 instead of proceeding. Silence is
+the one signal that never means approval.
+
 ## 2. Reaction semantics
 
 - 👀 (`eyes`) = **currently reading**. Not a result. Keep waiting.
@@ -123,7 +136,8 @@ contained, since substantive edits are what introduce new defects:
 
 - **Nothing, or cosmetic only** — docs, comments, naming, formatting: fix them,
   push, and proceed to step 7 without waiting. A gather that is clean or
-  cosmetic-only from the start goes straight to step 7.
+  cosmetic-only from the start goes straight to step 7 — but only once it has
+  passed *Empty is not clean* in step 1. An unreviewed PR is not a clean one.
 - **Anything substantive** — correctness, security, data loss, API misuse, a
   test gap hiding a real bug: block on the next verdict and repeat from step 1.
 
@@ -148,5 +162,14 @@ exact test pass count from step 4.
 
 ## 8. Merge
 
-Only if the user approves: squash-merge, using `--admin` if branch protection
-blocks.
+Requires the user's approval. A conditional grant already given — "merge once
+the bots are clean", "merge on green", "merge once this round is clean" —
+satisfies that gate, but only after its condition is **objectively verified**:
+a converged round per step 6, CI actually green, whichever was named. Verify the
+condition; never infer that it was met. If it is ambiguous, only partly met, or
+rests on a signal you could not confirm, ask instead of merging.
+
+Approval is scoped to one PR. A single session often takes several PRs through
+this skill, and permission granted for one is not permission for the next.
+
+Then squash-merge, using `--admin` if branch protection blocks.
