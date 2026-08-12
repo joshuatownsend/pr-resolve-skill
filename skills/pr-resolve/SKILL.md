@@ -35,18 +35,35 @@ gh api repos/{owner}/{repo}/issues/<n>/reactions --paginate \
         | group_by(.user) | map(max_by(.created_at))'
 ```
 
-**A Copilot review saying "generated no new comments" is not a clean verdict.**
-Read the full review body regardless — findings are routinely suppressed inside
-`<details>` blocks while the summary line reports nothing.
+**Read every review body in full. Never merely count reviews, and never judge
+one by its `state` or `submitted_at`.** That metadata tells you something was
+posted, not what it said, and both failure modes below are invisible from the
+metadata alone:
+
+- **A review reporting nothing may still carry findings.** A Copilot review
+  saying "generated no new comments" is not a clean verdict — findings are
+  routinely suppressed inside `<details>` blocks while the summary line reports
+  nothing.
+- **A review may represent no review at all.** Reviewers post skipped, errored,
+  and quota-exhausted notices as ordinary reviews, with a plausible `state` and
+  an accurate timestamp — a body reading "Code review skipped — your
+  organization's overage spend limit has been reached" is zero review coverage
+  wearing the shape of a completed review.
+
+**A skipped, errored, or quota-exhausted review counts as no reviewer.** That
+reviewer has not engaged, so it fails *Empty is not clean* below rather than
+satisfying it — this is the more dangerous case of the two, because it looks
+like success. Report the notice to the user; clearing it usually takes an
+account or billing change only they can make.
 
 ### Empty is not clean
 
 Nothing found and nobody heard from is not a clean PR — it is a PR no one has
 looked at yet. Before treating any gather as clean, confirm each expected
 reviewer has engaged with the **current** head: an inline comment, a submitted
-review, or a reaction dated after the head push. Work out who to expect from the
-reviewers already active on this PR, or from the most recently merged PR in the
-repo when this is the first round.
+review that actually reviewed, or a reaction dated after the head push. Work out
+who to expect from the reviewers already active on this PR, or from the most
+recently merged PR in the repo when this is the first round.
 
 If no reviewer has engaged with the current head, the round is not clean — it has
 not happened yet. Wait and re-poll per step 6 instead of proceeding. Silence is
@@ -170,7 +187,13 @@ from the API:
   queued; wait. (GitHub clears `reviewRequests` once the review lands, so the
   timeline is the durable record.)
 - **In progress** — its latest reaction is 👀. Wait.
-- **Fresh verdict** — a comment, review, or 👍 after `PUSH_TIME`. Consume it.
+- **Fresh verdict** — a comment, review, or 👍 after `PUSH_TIME`, from someone
+  other than you. Consume it.
+- **Responded without reviewing** — its latest review is a skipped, errored, or
+  quota-exhausted notice (step 1). It has answered, so it is not pending, and it
+  will keep answering identically until a condition outside this PR changes.
+  **Never wait for its real verdict — that wait does not end.** Count it as not
+  having reviewed, and tell the user what the notice said.
 - **Done, not pending** — reviewed an older head, with no newer request. **It is
   not coming back on its own.** Never block on this state: a reviewer that acts
   only on request is finished, not slow. Blocking here hangs forever.
