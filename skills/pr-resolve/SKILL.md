@@ -4,7 +4,7 @@ description: Resolve pull request review comments from bot reviewers, verify, an
 ---
 
 Resolve every review finding on a PR, verify, and merge. Bot reviewers signal
-findings and verdicts through three different channels — gather all three, every
+findings and verdicts through four different channels — gather all four, every
 round. `gh pr view --comments` alone is not sufficient and will show an empty
 result while findings exist.
 
@@ -15,7 +15,7 @@ report what you found, and stop. Go on to fix, verify, push, and comment only
 once the user asks for the findings to be resolved, or has already authorized
 it. A status question must never turn itself into a push.
 
-## 1. Gather findings from all three sources
+## 1. Gather findings from all four sources
 
 **First establish two facts about this repository: who reviews here, and which
 channels they actually use.** Both are per-repo, both are cheap to determine from
@@ -28,13 +28,15 @@ put yourself in it:** once you have replied in a thread you appear as an active
 reviewer, and step 6 excludes you from verdicts, so a roster containing your own
 login can never be satisfied and the wait never ends.
 
-**The live channels.** Gather all three below every round regardless — but know
-which ones carry signal here. A repo where Codex never runs has no reaction
-traffic at all, and an empty reactions result there means the channel is unused,
-not that a verdict is pending. Waiting on a channel this repo does not use is a
-wait that never ends.
+**The live channels.** Gather all four below every round regardless — but know
+which ones carry signal here, because reviewers do not share a channel. Codex
+reports its verdict by reaction; `claude[bot]` never reacts at all and may put an
+entire review in a conversation comment; Copilot uses reviews and inline
+comments. So an empty reactions result in a repo without Codex means the channel
+is unused, not that a verdict is pending — and waiting on a channel this repo
+does not use is a wait that never ends.
 
-Run all three. `--paginate` matters: a busy PR silently truncates otherwise.
+Run all four. `--paginate` matters: a busy PR silently truncates otherwise.
 
 ```bash
 # a. Inline review comments
@@ -49,7 +51,20 @@ gh api repos/{owner}/{repo}/pulls/<n>/reviews --paginate \
 # c. PR-level reactions (note: issues/, not pulls/ — reactions are issue-scoped)
 gh api repos/{owner}/{repo}/issues/<n>/reactions --paginate \
   --jq '.[] | {user: .user.login, content, created_at}'
+
+# d. PR conversation comments — a full review, or a verdict, may be posted here
+#    instead of as a review. This is not the same endpoint as (a): inline
+#    comments are attached to lines, these are attached to the PR.
+gh api repos/{owner}/{repo}/issues/<n>/comments --paginate \
+  --jq '.[] | {user: .user.login, created_at, body}'
 ```
+
+**Channel (d) is the one most often skipped, and it is where `claude[bot]`
+frequently reports.** Sampling twenty public PRs it had touched, its output was
+in conversation comments on six of them and *only* there on two — a complete
+review with findings in one case, and the verdict "No findings — reviewed
+64c224d" in another. Both are invisible to (a), (b) and (c). A reviewer is not
+absent because it filed nothing you recognized as a review.
 
 **Keep every `--jq` filter streaming, one item at a time.** Under `--paginate`,
 `gh` applies `--jq` to each page *separately*, so any filter that aggregates —
@@ -79,8 +94,20 @@ metadata alone:
 **A skipped, errored, or quota-exhausted review counts as no reviewer.** That
 reviewer has not engaged, so it fails *Empty is not clean* below rather than
 satisfying it — this is the more dangerous case of the two, because it looks
-like success. Report the notice to the user; clearing it usually takes an
-account or billing change only they can make.
+like success.
+
+A third variant is an **invitation** rather than a failure, and it is the one you
+can act on. `claude[bot]` posts, on repos configured for manual review:
+
+> This repository is configured for manual code reviews. Comment `@claude review`
+> for a one-time review, or `@claude review always` to subscribe this PR to a
+> review on every future push.
+
+That is zero coverage too, and waiting for a verdict that follows it waits
+forever — but the remedy is one comment, not an admin change. Trigger the review
+and wait a round. Distinguish the three before reporting: a **quota or spend cap**
+needs an account change only the user can make, an **error** may clear on retry,
+and an **invitation** just needs asking.
 
 ### Empty is not clean
 
@@ -217,9 +244,16 @@ gh api repos/{owner}/{repo}/pulls/<n>/comments --paginate \
 gh api repos/{owner}/{repo}/issues/<n>/reactions --paginate \
   --jq ".[] | select(.created_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
         | {user: .user.login, content, created_at}"
+
+gh api repos/{owner}/{repo}/issues/<n>/comments --paginate \
+  --jq ".[] | select(.created_at > \"$PUSH_TIME\") | select(.user.login != \"$ME\")
+        | {user: .user.login, created_at, body}"
 ```
 
-Keep `body` in the review and comment queries, for the reason step 1 gives.
+Keep `body` in every query that has one, for the reason step 1 gives. A verdict
+that names the commit it reviewed — "No findings — reviewed 64c224d" — is a
+better freshness test than any timestamp: compare that SHA to the current head
+rather than trusting `created_at`, which only tells you when it was posted.
 Where the expected reviewers are all bots, `select(.user.type == "Bot")` is an
 equivalent filter — `.user.type` is `"Bot"` for
 `copilot-pull-request-reviewer[bot]` and `"User"` for humans — but it also drops
@@ -293,6 +327,13 @@ if neither appears, it did not register. Confirm the outcome by watching for the
 review itself, never by the call succeeding.
 
 Codex re-reviews automatically on every push, and on a `@codex review` comment.
+
+`claude[bot]` is mention-triggered wherever the repo is set to manual review:
+`@claude review` gets one review, `@claude review always` subscribes the PR to a
+review on every later push. Check which mode is in effect before waiting on it —
+in manual mode it will never review unbidden, however long you wait, and the
+notice quoted in step 1 is how it says so. It does not use reactions, so its
+verdict arrives as a review or a conversation comment, never as a 👍.
 
 ### How many rounds
 
