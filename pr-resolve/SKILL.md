@@ -96,7 +96,8 @@ authored well before it was pushed — prefer the captured value.
 
 ## 6. Wait for a fresh verdict
 
-After **every** push, not just the first. A verdict is one of:
+Applies after every push, not just the first — though *How many rounds* below
+decides when blocking on the result is actually warranted. A verdict is one of:
 
 - a new inline comment, **or**
 - a submitted review, **or**
@@ -106,14 +107,39 @@ and explicitly **not** 👀. ISO-8601 UTC timestamps compare correctly as plain
 strings, so `created_at > $PUSH_TIME` is a valid test.
 
 Re-run step 1 to poll. If a verdict brings new findings, return to step 3 and
-repeat the whole loop. Only proceed once every reviewer has issued a fresh, clean
-verdict. If no verdict arrives after a reasonable wait, report the wait and ask
-the user how to proceed — do not treat silence as approval.
+repeat the loop. If no verdict arrives after a reasonable wait, report the wait
+and ask the user how to proceed — do not treat silence as approval.
 
 **Do not use a re-review request as a completion signal.** `POST
 repos/{owner}/{repo}/pulls/<n>/requested_reviewers` returns 200 and leaves
 `requested_reviewers` empty for the Copilot bot, so a successful response does
 not confirm a review was queued.
+
+### How many rounds
+
+Every push re-triggers the bots, so another round always happens — the only
+decision is whether to block on it. Judge by what the round you just fixed
+contained, since substantive edits are what introduce new defects:
+
+- **Nothing, or cosmetic only** — docs, comments, naming, formatting: fix them,
+  push, and proceed to step 7 without waiting. A gather that is clean or
+  cosmetic-only from the start goes straight to step 7.
+- **Anything substantive** — correctness, security, data loss, API misuse, a
+  test gap hiding a real bug: block on the next verdict and repeat from step 1.
+
+Converged means the latest round raised no new **substantive** findings — not
+that every remark was addressed. Declining a finding is legitimate; a bot that
+re-raises something you declined is a known disagreement, not new information,
+so treat it as converged and record it in the step 7 summary for the user to
+arbitrate at the merge gate.
+
+Stop and ask the user rather than pushing again when:
+
+- a round re-raises something you already **fixed** — the fix did not take, and
+  another round of the same will not help
+- three substantive rounds pass without converging
+
+Report what is still outstanding and let the user decide.
 
 ## 7. Summarize
 
