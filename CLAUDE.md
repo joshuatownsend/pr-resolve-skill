@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-A Claude Code **skill** repository. Alongside this file, `README.md`, and the card in `assets/`, it holds one skill:
+A Claude Code **skill** repository. Alongside this file, `README.md`, `DECISIONS.md`, and the card in `assets/`, it holds one skill:
 
 - `skills/pr-resolve/SKILL.md` — the `pr-resolve` skill: frontmatter declaring `name`, plus a `description` whose trigger phrases are what drive automatic invocation, followed by a numbered procedure the agent follows.
 
@@ -29,3 +29,5 @@ The commands in `skills/pr-resolve/SKILL.md` (`gh pr view <num> --comments`, `np
 ## Editing the skill
 
 The whole file is agent-facing prose — wording is behavior. When widening the `description`, prefer phrasings observed in real transcripts over invented ones. Keep steps imperative, ordered, and specific about what to verify (the existing body asks for an exact test pass count and gates merging on user approval). Preserve those verification and approval gates unless explicitly asked to change them, since they are what keeps the skill from merging unverified work.
+
+**Check `DECISIONS.md` before acting on a review finding against this repo, especially one a bot has raised before.** It records closed decisions — what was rejected, and what new information would justify reopening it. Some findings here are wrong and recur; the file exists so they get declined once rather than every time. When you decline a finding on grounds that will apply again, add an entry.
