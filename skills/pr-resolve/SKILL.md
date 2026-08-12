@@ -191,9 +191,21 @@ silently — which is what you want, since a review nobody has submitted is not 
 verdict. No null guard is needed; jq orders `null` below every string, so the
 comparison is `false` rather than an error.
 
-If a verdict brings new findings, return to step 3 and
-repeat the loop. If no verdict arrives after a reasonable wait, report the wait
-and ask the user how to proceed — do not treat silence as approval.
+**One verdict is not the round.** Keep polling until *every* expected reviewer
+has either a fresh verdict or a state that says it is not coming (*Where each
+reviewer stands*, below) — not until the first one answers. Compare the logins
+that come back against the roster you established in step 1.
+
+Reviewers do not answer together, and the gap is long enough to lose one: two
+bots reviewing the same push landed 73 seconds apart in a real run. A poll that
+stops at the first verdict leaves the second reviewer's findings unread, and the
+next push then moves the head out from under them — so they are never gathered
+at all, and the round looks cleaner than it was. This is the same mistake as
+counting inline comments, arriving from a different direction.
+
+If the round brings new findings, return to step 3 and repeat the loop. If a
+reviewer that should still answer does not after a reasonable wait, report which
+one and ask the user how to proceed — do not treat silence as approval.
 
 ### Where each reviewer stands
 
